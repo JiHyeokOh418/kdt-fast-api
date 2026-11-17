@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, UploadFile, File, Form
 from app.services.member_service import get_member_service, MemberService
+from app.services.s3_service import get_s3_service, S3Service
 from app.enums.member_enum import MemberProvider
+from app.enums.s3_enum import S3Folder
 from app.schemas.member_schema import MemberCreateDTO, MemberClaimDTO, MemberUpdateDTO
 from app.schemas.common_schema import ApiResponseDTO
+from app.schemas.s3_schema import ImageUploadResponseDTO
+from app.dependencies.auth_dependency import get_current_member
+
 
 router = APIRouter()
 
@@ -23,7 +28,7 @@ async def check_member(
 
 
 @router.post("/join",
-    summary="로컬 회원 가입",
+    summary="회원 가입",
     response_model=ApiResponseDTO,
     responses={
         409: {
@@ -42,9 +47,9 @@ async def join(
     member: MemberCreateDTO, 
     member_service: MemberService = Depends(get_member_service)
 ):
-    pass
-    # provider는 controller 담당
-    member.member_provider = MemberProvider.LOCAL.value
+    if not member.member_provider:
+        member.member_provider = MemberProvider.LOCAL.value
+        
     member_claim: MemberClaimDTO = await member_service.join(member)
 
     return ApiResponseDTO(
@@ -141,6 +146,37 @@ async def update_member(
     )
 
 
+@router.put(
+    "/{id}/profile",
+    summary="회원 프로필 수정",
+    response_model=ApiResponseDTO
+)
+async def update_profile(
+    id: int, 
+    file: UploadFile = File(...),
+    folder: S3Folder = Form(...),
+    s3_service: S3Service = Depends(get_s3_service),
+    member_service: MemberService = Depends(get_member_service)
+):
+    result: ImageUploadResponseDTO = await s3_service.upload_image_with_thumbnail(
+        file=file,
+        folder=folder.value
+    )
+
+    original_url = result.original_url
+    member_update_dto = MemberUpdateDTO(
+        member_profile=original_url
+    )
+    
+    updated_member = await member_service.update_member(id, member_update_dto)
+
+    return ApiResponseDTO(
+        success=True,
+        message="프로필 수정 완료",
+        data=updated_member
+    )
+
+
 @router.delete(
     "/{id}",
     summary="회원 탈퇴",
@@ -152,6 +188,26 @@ async def withdraw(id: int, member_service: MemberService = Depends(get_member_s
     return ApiResponseDTO(
         success=True,
         message="회원 탈퇴 완료"
+    )
+
+
+# access_token -> 사용자를 전달하는 서비스
+@router.post(
+    "/me",
+    response_model=ApiResponseDTO,
+    summary="Access Token으로 회원정보 조회"
+)
+async def me(
+    current_member: MemberClaimDTO = Depends(get_current_member),
+    member_service: MemberService = Depends(get_member_service)
+):
+    member_id = current_member.id
+    found_member = await member_service.get_member_by_id(member_id)
+
+    return ApiResponseDTO(
+        success=True,
+        message="회원 정보 조회 완료",
+        data=found_member
     )
 
 

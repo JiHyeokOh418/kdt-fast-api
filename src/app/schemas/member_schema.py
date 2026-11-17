@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel # JS 카멜 -> Snake로 변경해서 받기
 from datetime import datetime
 from app.enums.member_enum import MemberProvider
 
@@ -9,6 +10,7 @@ class MemberVO(BaseModel):
     member_password: str | None = None
     member_name: str | None = None
     member_age: int | None = None
+    member_phone: str | None = None
     member_profile: str | None = "/members/default.jpg"
     member_provider_id: str | None = None
     member_provider: MemberProvider
@@ -21,23 +23,26 @@ class MemberCreateDTO(BaseModel):
     member_password: str | None = None
     member_name: str | None = None
     member_age: int | None = None
+    member_phone: str | None = None
     member_profile: str | None = "/members/default.jpg"
     member_provider: MemberProvider | None = None
+    member_provider_id: str | None = None
 
     # ORM -> Pydantic
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
 
 class SocialMemberCreateDTO(BaseModel):
     member_email: str
     member_name: str | None = None
     member_age: int | None = None
+    member_phone: str | None = None
     member_profile: str | None = "/members/default.jpg"
     member_provider: MemberProvider | None = None
+    member_provider_id: str | None = None
 
     # ORM -> Pydantic
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
 
 class MemberClaimDTO(BaseModel):
     id: int
@@ -53,6 +58,7 @@ class MemberResponseDTO(BaseModel):
     member_email: str
     member_name: str | None = None
     member_age: int | None = None
+    member_phone: str | None = None
     member_profile: str | None = "/members/default.jpg"
     member_provider_id: str | None = None
     member_provider: MemberProvider
@@ -66,6 +72,7 @@ class MemberUpdateDTO(BaseModel):
     member_password: str | None = None
     member_name: str | None = None
     member_age: int | None = None
+    member_phone: str | None = None
     member_profile: str | None = "/members/default.jpg"
 
     class Config:

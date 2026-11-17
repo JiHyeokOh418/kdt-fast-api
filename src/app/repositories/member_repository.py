@@ -51,8 +51,6 @@ class MemberRepository:
         )
 
         result = await self.db.execute(query)
-        await self.db.commit()
-
         # 필요한 값을 리턴(id, email, provider)
         id, member_email, member_provider = result.first()
 
@@ -64,6 +62,8 @@ class MemberRepository:
 
         # dict -> pydantic
         claim_dto = MemberClaimDTO.model_validate(payload)
+
+        await self.db.commit()
         return claim_dto
 
 
@@ -136,9 +136,8 @@ class MemberRepository:
         )
 
         result = await self.db.execute(query)
-        await self.db.commit()
-
         updated_member = result.scalar_one_or_none()
+        await self.db.commit()
         return updated_member
 
 
@@ -151,7 +150,6 @@ class MemberRepository:
         result = await self.db.execute(query)
         await self.db.commit()
         return result.rowcount > 0
-
 
 
 
